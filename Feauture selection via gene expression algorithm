@@ -1,0 +1,84 @@
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+from deap import base, creator, tools, algorithms
+import random
+import matplotlib.pyplot as plt
+
+# 1. Simulate gene expression data (e.g., 100 samples, 1000 genes)
+X, y = make_classification(n_samples=100, n_features=1000, n_informative=50, random_state=42)
+
+# 2. GA setup
+NUM_FEATURES = X.shape[1]
+
+# Define fitness and individual
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))  # Maximize accuracy
+creator.create("Individual", list, fitness=creator.FitnessMax)
+
+toolbox = base.Toolbox()
+
+# Binary representation: 0 (exclude), 1 (include)
+toolbox.register("attr_bool", random.randint, 0, 1)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=NUM_FEATURES)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+# Fitness function
+def evaluate(individual):
+    # Ensure at least one feature is selected
+    if sum(individual) == 0:
+        return 0.0,
+    selected_features = [i for i, bit in enumerate(individual) if bit == 1]
+    clf = RandomForestClassifier(n_estimators=50)
+    scores = cross_val_score(clf, X[:, selected_features], y, cv=5, scoring='accuracy')
+    return scores.mean(),
+
+# Register functions
+toolbox.register("evaluate", evaluate)
+toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mutate", tools.mutFlipBit, indpb=0.01)  # Mutation probability per gene
+toolbox.register("select", tools.selTournament, tournsize=3)
+
+# GA parameters
+POP_SIZE = 50
+N_GEN = 20
+CXPB = 0.5  # Crossover probability
+MUTPB = 0.2  # Mutation probability
+
+# Run GA
+def run_ga():
+    pop = toolbox.population(n=POP_SIZE)
+    hof = tools.HallOfFame(1)
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    stats.register("avg", np.mean)
+    stats.register("max", np.max)
+
+    pop, logbook = algorithms.eaSimple(
+        pop, toolbox,
+        cxpb=CXPB,
+        mutpb=MUTPB,
+        ngen=N_GEN,
+        stats=stats,
+        halloffame=hof,
+        verbose=True
+    )
+
+    return hof[0], logbook
+
+best_individual, log = run_ga()
+
+# Output results
+selected_genes = [i for i, bit in enumerate(best_individual) if bit == 1]
+print(f"Best Accuracy: {evaluate(best_individual)[0]:.4f}")
+print(f"Selected {len(selected_genes)} genes out of {NUM_FEATURES}")
+
+# Plotting fitness progress
+gen = log.select("gen")
+max_fitness = log.select("max")
+plt.plot(gen, max_fitness, label="Max Fitness")
+plt.xlabel("Generation")
+plt.ylabel("Accuracy")
+plt.title("GA Feature Selection Progress")
+plt.legend()
+plt.grid()
+plt.show()
