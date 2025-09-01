@@ -1,0 +1,68 @@
+import numpy as np
+
+# Define the fitness function (De Jong function)
+def fitness_function(position):
+    x, y = position
+    return x**2 + y**2  # Minimizing this function
+
+# PSO parameters
+num_particles = 30
+max_iterations = 100
+inertia_weight = 0.7
+cognitive_coefficient = 1.5
+social_coefficient = 1.5
+
+# Search space boundaries
+position_bounds = [-10, 10]
+velocity_bounds = [-1, 1]
+
+# Initialize particles
+positions = np.random.uniform(position_bounds[0], position_bounds[1], (num_particles, 2))
+velocities = np.random.uniform(velocity_bounds[0], velocity_bounds[1], (num_particles, 2))
+
+# Initialize personal best positions and fitnesses
+personal_best_positions = positions.copy()
+personal_best_fitness = np.array([fitness_function(pos) for pos in positions])
+
+# Initialize global best
+global_best_index = np.argmin(personal_best_fitness)
+global_best_position = personal_best_positions[global_best_index].copy()
+global_best_fitness = personal_best_fitness[global_best_index]
+
+for iteration in range(max_iterations):
+    for i in range(num_particles):
+        # Update velocity
+        r1, r2 = np.random.rand(2)
+        velocities[i] = (
+            inertia_weight * velocities[i]
+            + cognitive_coefficient * r1 * (personal_best_positions[i] - positions[i])
+            + social_coefficient * r2 * (global_best_position - positions[i])
+        )
+        # Clamp velocities
+        velocities[i] = np.clip(velocities[i], velocity_bounds[0], velocity_bounds[1])
+
+        # Update position
+        positions[i] += velocities[i]
+        # Clamp positions
+        positions[i] = np.clip(positions[i], position_bounds[0], position_bounds[1])
+
+        # Evaluate fitness
+        fitness = fitness_function(positions[i])
+
+        # Update personal best
+        if fitness < personal_best_fitness[i]:
+            personal_best_positions[i] = positions[i].copy()
+            personal_best_fitness[i] = fitness
+
+            # Update global best
+            if fitness < global_best_fitness:
+                global_best_position = positions[i].copy()
+                global_best_fitness = fitness
+
+    # Optional: print progress
+    if (iteration + 1) % 10 == 0:
+        print(f"Iteration {iteration+1}/{max_iterations}, Best Fitness: {global_best_fitness:.6f}")
+
+print("\nOptimization complete.")
+print("Best Position Found:", global_best_position)
+print("Best Fitness (Minimum Risk/Error):", global_best_fitness)
