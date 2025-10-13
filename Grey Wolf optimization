@@ -1,0 +1,92 @@
+import numpy as np
+
+# Define customer hotspots (example: 5 hotspots)
+hotspots = np.array([
+    [2, 3],
+    [5, 8],
+    [1, 7],
+    [6, 2],
+    [7, 7]
+])
+
+# Define search space boundaries (e.g. city map bounds)
+X_min, X_max = 0, 10
+Y_min, Y_max = 0, 10
+
+# Objective function: minimize total Euclidean distance to hotspots
+def objective(position):
+    x, y = position
+    distances = np.linalg.norm(hotspots - position, axis=1)
+    return np.sum(distances)
+
+# Grey Wolf Optimization parameters
+num_wolves = 20
+max_iter = 100
+
+# Initialize the positions of wolves randomly in the search space
+positions = np.random.uniform(low=[X_min, Y_min], high=[X_max, Y_max], size=(num_wolves, 2))
+
+# Initialize alpha, beta, delta wolves
+alpha_pos = np.zeros(2)
+alpha_score = float('inf')
+
+beta_pos = np.zeros(2)
+beta_score = float('inf')
+
+delta_pos = np.zeros(2)
+delta_score = float('inf')
+
+# Main loop
+for iter in range(max_iter):
+    for i in range(num_wolves):
+        # Calculate fitness for each wolf
+        fitness = objective(positions[i])
+
+        # Update alpha, beta, delta
+        if fitness < alpha_score:
+            alpha_score = fitness
+            alpha_pos = positions[i].copy()
+        elif fitness < beta_score:
+            beta_score = fitness
+            beta_pos = positions[i].copy()
+        elif fitness < delta_score:
+            delta_score = fitness
+            delta_pos = positions[i].copy()
+
+    # Coefficient decreases linearly from 2 to 0
+    a = 2 - iter * (2 / max_iter)
+
+    # Update position of each wolf
+    for i in range(num_wolves):
+        for j in range(2):  # for each dimension (x and y)
+            r1 = np.random.rand()
+            r2 = np.random.rand()
+
+            A1 = 2 * a * r1 - a
+            C1 = 2 * r2
+            D_alpha = abs(C1 * alpha_pos[j] - positions[i][j])
+            X1 = alpha_pos[j] - A1 * D_alpha
+
+            r1 = np.random.rand()
+            r2 = np.random.rand()
+            A2 = 2 * a * r1 - a
+            C2 = 2 * r2
+            D_beta = abs(C2 * beta_pos[j] - positions[i][j])
+            X2 = beta_pos[j] - A2 * D_beta
+
+            r1 = np.random.rand()
+            r2 = np.random.rand()
+            A3 = 2 * a * r1 - a
+            C3 = 2 * r2
+            D_delta = abs(C3 * delta_pos[j] - positions[i][j])
+            X3 = delta_pos[j] - A3 * D_delta
+
+            positions[i][j] = (X1 + X2 + X3) / 3
+
+        # Clamp position within bounds
+        positions[i][0] = np.clip(positions[i][0], X_min, X_max)
+        positions[i][1] = np.clip(positions[i][1], Y_min, Y_max)
+
+# Output the best location found
+print(f"Optimal coffee shop location: x = {alpha_pos[0]:.3f}, y = {alpha_pos[1]:.3f}")
+print(f"Minimum total distance to hotspots: {alpha_score:.3f}")
