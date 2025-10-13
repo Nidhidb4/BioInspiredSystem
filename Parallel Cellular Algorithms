@@ -1,0 +1,65 @@
+import numpy as np
+
+# Parameters
+N = 25  # number of sensor nodes (assume grid sqrt(N) x sqrt(N))
+P_min = 0.1
+P_max = 1.0
+max_iterations = 50
+alpha = 0.5  # learning rate
+w1 = 0.7    # weight for coverage in fitness
+w2 = 0.3    # weight for power in fitness
+
+# Grid size
+grid_size = int(np.sqrt(N))
+assert grid_size ** 2 == N, "N should be a perfect square for grid formation."
+
+# Initialize sensor nodes with random power
+powers = np.random.uniform(P_min, P_max, size=N)
+
+# Dummy coverage function: 
+# Let's assume coverage is proportional to power (simple linear model)
+def coverage(power):
+    # For simplicity: coverage is power squared (just an example)
+    return power ** 2
+
+# Max coverage for normalization
+max_coverage = coverage(P_max)
+
+# Get neighbors in grid (4-neighbors: up, down, left, right)
+def get_neighbors(idx):
+    neighbors = []
+    row, col = divmod(idx, grid_size)
+    if row > 0:    neighbors.append((row - 1) * grid_size + col)     # up
+    if row < grid_size - 1: neighbors.append((row + 1) * grid_size + col)  # down
+    if col > 0:    neighbors.append(row * grid_size + (col - 1))     # left
+    if col < grid_size - 1: neighbors.append(row * grid_size + (col + 1))  # right
+    return neighbors
+
+for iteration in range(max_iterations):
+    # Compute fitness for each node
+    fitness = np.zeros(N)
+    for i in range(N):
+        c = coverage(powers[i])
+        fitness[i] = w1 * (c / max_coverage) - w2 * (powers[i] / P_max)
+
+    # Update powers based on neighbors
+    new_powers = np.copy(powers)
+    for i in range(N):
+        neighbors = get_neighbors(i)
+        better_neighbors = [n for n in neighbors if fitness[n] > fitness[i]]
+
+        if better_neighbors:
+            avg_power = np.mean([powers[n] for n in better_neighbors])
+            new_power = powers[i] + alpha * (avg_power - powers[i])
+            # Clamp to [P_min, P_max]
+            new_power = max(P_min, min(P_max, new_power))
+            new_powers[i] = new_power
+        else:
+            # No change if no better neighbor
+            new_powers[i] = powers[i]
+
+    powers = new_powers
+
+# Output final power settings
+for idx, p in enumerate(powers):
+    print(f"Node {idx}: Power = {p:.3f}")
