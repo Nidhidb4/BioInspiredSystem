@@ -1,0 +1,72 @@
+import numpy as np
+import copy
+
+# Limit printed decimal places
+np.set_printoptions(precision=3, suppress=True)
+
+# Initialize population
+def initialize_population(rows, cols):
+    return np.random.rand(rows, cols)
+
+# Get neighbors of cell (i, j)
+def get_neighbors(grid, i, j):
+    neighbors = []
+    rows, cols = grid.shape
+
+    for di in [-1, 0, 1]:
+        for dj in [-1, 0, 1]:
+            if di == 0 and dj == 0:
+                continue
+            ni, nj = i + di, j + dj
+            if 0 <= ni < rows and 0 <= nj < cols:
+                neighbors.append(grid[ni][nj])
+
+    return neighbors
+
+# Fitness function (example: square of the value)
+def fitness_function(value):
+    return value 
+
+# Parallel Cellular Algorithm
+def parallel_cellular_algorithm(rows, cols, iterations):
+    cells = initialize_population(rows, cols)
+
+    print("Initial Grid:\n", cells)
+
+    # Track the best fitness
+    best_fitness = float('inf')
+    best_solution = None
+
+    for _ in range(iterations):
+        new_cells = copy.deepcopy(cells)
+
+        for i in range(rows):
+            for j in range(cols):
+                neighbors = get_neighbors(cells, i, j)
+                if neighbors:
+                    new_cells[i][j] = sum(neighbors) / len(neighbors)
+
+        cells = new_cells
+
+        # Evaluate the fitness of the grid
+        fitness_values = np.vectorize(fitness_function)(cells)
+        current_fitness = np.sum(fitness_values)
+
+        # Track best solution
+        if current_fitness < best_fitness:
+            best_fitness = current_fitness
+            best_solution = cells.copy()
+
+        print(f"Iteration {_+1}: Best Fitness = {best_fitness:.3f}")
+
+    print("\nFinal Grid:\n", cells)
+    print("\nBest Solution Fitness:", best_fitness)
+    return cells
+
+
+# Run algorithm
+parallel_cellular_algorithm(
+    rows=5,
+    cols=5,
+    iterations=10
+)
